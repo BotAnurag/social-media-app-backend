@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 
 import bcryptjs from "bcryptjs";
-import { strict } from "assert";
 
 const userSchema = new mongoose.Schema(
   {
@@ -41,8 +40,31 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-userSchema.method.isPasswordCorrect = async function (password) {
+userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcryptjs.compare(password, this.password);
+};
+
+userSchema.methods.generateAccessToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+      username: this.username,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRE }
+  );
+};
+
+userSchema.methods.generateRefreshToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRE,
+    }
+  );
 };
 
 const userProfileSchema = new mongoose.model("userProfileSchema", userSchema);
