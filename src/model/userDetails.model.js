@@ -67,6 +67,6 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-const userProfileSchema = new mongoose.model("userProfileSchema", userSchema);
+const userDetail = new mongoose.model("userDetail", userSchema);
 
-export default userProfileSchema;
+export default userDetail;

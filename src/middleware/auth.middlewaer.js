@@ -1,11 +1,11 @@
 import asyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
-import userProfileSchema from "../model/user.model.js";
+import userDetail from "../model/userDetails.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
 const verifyJWt = asyncHandler(async (req, res, next) => {
   try {
-    console.log(req.cookies);
+    // console.log(req.cookies);
 
     const token = req.cookies?.accessToken;
     if (!token) {
@@ -13,7 +13,7 @@ const verifyJWt = asyncHandler(async (req, res, next) => {
     }
     const decodeToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    const user = await userProfileSchema
+    const user = await userDetail
       .findById(decodeToken._id)
       .select("-password -refreshToken");
     if (!user) {

@@ -1,19 +1,18 @@
 import asyncHandler from "express-async-handler";
 
-import userProfileSchema from "../model/user.model.js";
+import userDetail from "../model/userDetails.model.js";
+import { ImagePost } from "../model/userPost.model.js";
 
 import otp from "../model/otp.model.js";
 
 import { ApiError } from "../utils/ApiError.js";
-
-import { uploadOnCloudinary } from "../utils/Imageupload.js";
 
 import otpGenerate from "../utils/otpGenerate.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 const generateAccesstokenRefreshtoken = async (userId) => {
   try {
-    const user = await userProfileSchema.findById(userId);
+    const user = await userDetail.findById(userId);
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
     user.refreshToken = refreshToken;
@@ -26,8 +25,21 @@ const generateAccesstokenRefreshtoken = async (userId) => {
   }
 };
 
-const homePage = asyncHandler((req, res) => {
-  res.status(200).send("home page ");
+const homePage = asyncHandler(async (req, res) => {
+  const user = await userDetail.find({});
+  res.status(200).json(new ApiResponse(200, user, `numHits:${user.length}`));
+});
+
+const getMyProfile = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const Detail = await userDetail.findById(userId);
+  const post = await ImagePost.find({ user: userId });
+
+  if (!Detail) {
+    throw new ApiError(404, "user not register");
+  }
+  res.status(200).json(new ApiResponse(200, { Detail, post }, "found you"));
 });
 
 const otpSender = asyncHandler(async (req, res) => {
@@ -67,7 +79,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const { username, dob, gender, email, password, onetimepass } = req.body;
 
-  const present = await userProfileSchema.findOne({
+  const present = await userDetail.findOne({
     email: email,
   });
   if (present) {
@@ -103,7 +115,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "invalid email or otp ");
   }
 
-  const profile = await userProfileSchema.create({
+  const profile = await userDetail.create({
     username,
     dateOfBirth: dob,
     gender,
@@ -127,7 +139,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!email || !password) {
     throw new ApiError(400, "email and password are required");
   }
-  const user = await userProfileSchema.findOne({ email });
+  const user = await userDetail.findOne({ email });
   if (!user) {
     throw new ApiError(404, "user not found please register first");
   }
@@ -152,7 +164,7 @@ const logout = asyncHandler(async (req, res) => {
   const user = req.user._id;
   console.log("hi");
 
-  await userProfileSchema.findByIdAndUpdate(
+  await userDetail.findByIdAndUpdate(
     user,
     {
       $set: { refreshToken: null },
@@ -172,22 +184,4 @@ const logout = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "logout success"));
 });
 
-const uploadProilePicture = asyncHandler(async (req, res) => {
-  let image = "";
-  console.log(req.body);
-
-  const profileimage = req.file?.path;
-
-  if (profileimage) {
-    image = await uploadOnCloudinary(profileimage);
-  }
-});
-
-export {
-  homePage,
-  registerUser,
-  otpSender,
-  loginUser,
-  uploadProilePicture,
-  logout,
-};
+export { homePage, registerUser, otpSender, loginUser, logout, getMyProfile };
