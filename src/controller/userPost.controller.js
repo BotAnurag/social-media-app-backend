@@ -79,14 +79,17 @@ const comment = asyncHandler(async (req, res) => {
   const newComments = {
     user: userId,
     say,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
   };
 
-  post.Comments.push(newComments);
-  await post.save();
+  const updatePost = await ImagePost.findByIdAndUpdate(
+    postId,
+    {
+      $push: { commenst: newComments },
+    },
+    { new: true, upsert: true }
+  );
 
-  res.status(200).json(new ApiResponse(200, {}, "comment posted"));
+  res.status(200).json(new ApiResponse(200, updatePost, "comment posted"));
 });
 
 const like = asyncHandler(async (req, res) => {
