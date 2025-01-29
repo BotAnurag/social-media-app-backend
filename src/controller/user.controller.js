@@ -1,7 +1,6 @@
 import asyncHandler from "express-async-handler";
 
 import userDetail from "../model/userDetails.model.js";
-import { ImagePost } from "../model/userPost.model.js";
 
 import otp from "../model/otp.model.js";
 
@@ -34,7 +33,7 @@ const getMyProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   const Detail = await userDetail.findById(userId);
-  const post = await ImagePost.find({ user: userId });
+  const post = await userPost.find({ user: userId });
 
   if (!Detail) {
     throw new ApiError(404, "user not register");

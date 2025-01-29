@@ -3,11 +3,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/Imageupload.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-import { ImagePost } from "../model/userPost.model.js";
+import { userPost } from "../model/userPost.model.js";
 
 import userDetail from "../model/userDetails.model.js";
+import { Types } from "mongoose";
 
 const uploadProfilePicture = asyncHandler(async (req, res) => {
+  let image = "";
   const userId = req.user;
   const { discripion } = req.body;
   const user = await userDetail.findById(userId);
@@ -15,7 +17,6 @@ const uploadProfilePicture = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "please register first");
   }
-  let image = "";
 
   const profileimage = req.file?.path;
 
@@ -24,7 +25,8 @@ const uploadProfilePicture = asyncHandler(async (req, res) => {
   if (!image) {
     throw new ApiError(400, "fail to upload image");
   }
-  const post = await ImagePost.create({
+
+  const post = await userPost.create({
     user: userId._id,
     is: "Profile",
     image: image.url,
@@ -53,7 +55,7 @@ const postPicture = asyncHandler(async (req, res) => {
   if (!image) {
     throw new ApiError(400, "fail to upload image");
   }
-  const post = await ImagePost.create({
+  const post = await userPost.create({
     user: userId._id,
     is: "Post",
     image: image.url,
@@ -62,34 +64,56 @@ const postPicture = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, post, "success"));
 });
 
+const postStatus = asyncHandler(async (req, res) => {
+  const owner = req.user._id;
+  const user = await userDetail.findById(owner);
+
+  if (!user) {
+    throw new ApiError(400, "user doesnot exit please register first");
+  }
+  const post = await userPost.create({
+    user: owner,
+    is: "Post",
+    image: null,
+    discripion,
+  });
+});
+
 const comment = asyncHandler(async (req, res) => {
   const { say, postId } = req.body;
   const userId = req.user._id;
+  console.log(postId, say);
 
   const user = await userDetail.findById(userId);
   if (!user) {
     throw new ApiError(404, "please register first");
   }
-  const post = await ImagePost.findById(postId);
+  const post = await userPost.findById(postId);
   if (!post) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, {}, "post all ready removed"));
+    throw new ApiError(400, "post not founds");
   }
   const newComments = {
     user: userId,
     say,
   };
+  post.comments.push(newComments);
+  await post.save();
 
-  const updatePost = await ImagePost.findByIdAndUpdate(
-    postId,
-    {
-      $push: { commenst: newComments },
-    },
-    { new: true, upsert: true }
-  );
+  res.status(200).json(new ApiResponse(200, post, "comment posted"));
+});
 
-  res.status(200).json(new ApiResponse(200, updatePost, "comment posted"));
+const postDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "inavalid id formate");
+  }
+  const post = await userPost.findById(id);
+  res.status(200).json(200, post, "");
+});
+
+const replyOnComment = asyncHandler(async (req, res) => {
+  const { commentID } = req.body;
+  const user = req.user._id;
 });
 
 const like = asyncHandler(async (req, res) => {
@@ -99,7 +123,7 @@ const like = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "please register first");
   }
-  const post = await ImagePost.findById(postId);
+  const post = await userPost.findById(postId);
   if (!post) {
     return res
       .status(200)
@@ -115,4 +139,12 @@ const like = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "lie  added"));
 });
 
-export { uploadProfilePicture, comment, postPicture, like };
+export {
+  uploadProfilePicture,
+  comment,
+  postPicture,
+  like,
+  replyOnComment,
+  postDetails,
+  postStatus,
+};

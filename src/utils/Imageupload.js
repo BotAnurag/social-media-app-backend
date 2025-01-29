@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { error } from "console";
 import dotenv from "dotenv";
 dotenv.config();
 import fs from "fs";
@@ -12,7 +13,11 @@ cloudinary.config({
 
 const uploadOnCloudinary = async (localFilePath) => {
   try {
-    if (!localFilePath) return `could not find file path`;
+    if (!localFilePath) {
+      console.error("Could not find file path");
+      return null;
+    }
+
     // upload file  on cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",

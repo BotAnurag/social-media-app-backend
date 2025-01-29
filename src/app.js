@@ -1,6 +1,9 @@
 import express from "express";
 import userRoutes from "./routes/user.routes.js";
+import postRoutes from "./routes/post.routes.js";
+import friedshipRoutes from "./routes/friendsship.routes.js";
 import cookieParser from "cookie-parser";
+
 const app = express();
 
 app.use(express.static("public"));
@@ -14,4 +17,6 @@ app.use(
 );
 
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/post", postRoutes);
+app.use("/api/v1/frieds", friedshipRoutes);
 export default app;

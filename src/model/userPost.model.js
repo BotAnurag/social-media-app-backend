@@ -1,33 +1,18 @@
 import mongoose from "mongoose";
 
 const commentScheam = new mongoose.Schema({
-  Comments: [
-    {
-      user: {
-        type: mongoose.Schema.ObjectId,
-        ref: "userDetail",
-        required: true,
-      },
-      say: {
-        type: String,
-      },
-      replies: [
-        {
-          user: {
-            type: mongoose.Schema.ObjectId,
-            ref: "userDetail",
-            required: true,
-          },
-          say: {
-            type: String,
-          },
-        },
-      ],
-    },
-  ],
+  user: {
+    type: mongoose.Schema.ObjectId,
+    ref: "userDetail",
+    required: true,
+  },
+  say: {
+    type: String,
+    required: true,
+  },
 });
 
-const profileSchema = new mongoose.Schema({
+const PostSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.ObjectId,
     ref: "userDetail",
@@ -51,7 +36,7 @@ const profileSchema = new mongoose.Schema({
       },
     },
   ],
-  commenst: [commentScheam],
+  comments: [commentScheam],
 });
 
-export const ImagePost = mongoose.model("profileImage", profileSchema);
+export const userPost = mongoose.model("userPost", PostSchema);
