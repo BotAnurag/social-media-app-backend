@@ -4,6 +4,8 @@ import userDetail from "../model/userDetails.model.js";
 
 import otp from "../model/otp.model.js";
 
+import { userPost } from "../model/userPost.model.js";
+
 import { ApiError } from "../utils/ApiError.js";
 
 import otpGenerate from "../utils/otpGenerate.js";

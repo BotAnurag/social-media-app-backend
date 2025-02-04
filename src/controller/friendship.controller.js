@@ -3,6 +3,7 @@ import { friendship } from "../model/friends.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
 import { ApiResponse } from "../utils/ApiResponse.js";
+import Chat from "../model/chat.model.js";
 
 import asyncHandler from "express-async-handler";
 
@@ -41,6 +42,7 @@ const sendFriendRequest = asyncHandler(async (req, res) => {
 });
 
 const acceptFriendRequest = asyncHandler(async (req, res) => {
+  // sending the object id of request not the user
   const { request } = req.body;
   const existRequest = await friendship.findById(request);
   if (!existRequest) {
@@ -48,6 +50,23 @@ const acceptFriendRequest = asyncHandler(async (req, res) => {
   }
   existRequest.status = "ACCEPTED";
   await existRequest.save();
+
+  const user1 = existRequest.requester;
+  const user2 = existRequest.recipient;
+
+  let chat = await Chat.findOne({
+    participants: { $all: [user1, user2] },
+  });
+
+  if (!chat) {
+    // Create a new chat if it doesn't exist
+    chat = new Chat({
+      participants: [user1, user2],
+    });
+  }
+
+  await chat.save(); // Save the chat document
+
   res.status(200).json(new ApiResponse(200, {}, "request accepted"));
 });
 

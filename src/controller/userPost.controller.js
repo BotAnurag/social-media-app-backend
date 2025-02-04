@@ -108,6 +108,9 @@ const postDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "inavalid id formate");
   }
   const post = await userPost.findById(id);
+  if (!post) {
+    throw new ApiError(400, "post not found");
+  }
   res.status(200).json(200, post, "");
 });
 
@@ -139,6 +142,19 @@ const like = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "lie  added"));
 });
 
+const getMyPosts = asyncHandler(async (req, res) => {
+  const me = req.user._id;
+  const myDetail = await userDetail
+    .findById(me)
+    .select(" -password -refreshToken");
+  if (!myDetail) {
+    throw new ApiError(400, "user not found ");
+  }
+  const myPosts = await userPost.find({ user: me });
+
+  res.status(200).json(new ApiResponse(200, { myDetail, myPosts }, ""));
+});
+
 export {
   uploadProfilePicture,
   comment,
@@ -147,4 +163,5 @@ export {
   replyOnComment,
   postDetails,
   postStatus,
+  getMyPosts,
 };
