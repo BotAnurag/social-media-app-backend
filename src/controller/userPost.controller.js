@@ -147,6 +147,8 @@ const getMyPosts = asyncHandler(async (req, res) => {
   const myDetail = await userDetail
     .findById(me)
     .select(" -password -refreshToken");
+  console.log(myDetail);
+
   if (!myDetail) {
     throw new ApiError(400, "user not found ");
   }

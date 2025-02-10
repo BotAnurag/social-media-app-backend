@@ -5,12 +5,14 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Chat from "../model/chat.model.js";
 
+import { userPost } from "../model/userPost.model.js";
+
 import asyncHandler from "express-async-handler";
+import userDetail from "../model/userDetails.model.js";
 
 const sendFriendRequest = asyncHandler(async (req, res) => {
   const from = req.user._id;
   const { to } = req.body;
-  console.log(`from ${from}     to ${to}`);
 
   if (from.toString() === to.toString()) {
     throw new ApiError(400, "cannot send request to yourself");
@@ -122,9 +124,48 @@ const blockUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "user blocked successfully"));
 });
 
+const searchFriends = asyncHandler(async (req, res) => {
+  const me = req.user._id;
+  const friends = await friendship.find({
+    $or: [{ requester: me }, { recipient: me }],
+    status: "ACCEPTED",
+  });
+
+  if (friends.length < 1) {
+    throw new ApiError(404, "make friends first");
+  }
+  const friendList = friends.map((friend) => {
+    return friend.requester._id.toString() === me.toString()
+      ? friend.recipient
+      : friend.requester;
+  });
+
+  const uniqueFriendId = [...new Set(friendList)];
+
+  console.log(uniqueFriendId);
+
+  const friendDetail = await userDetail
+    .find({ _id: { $in: uniqueFriendId } })
+    .select("username");
+  const userPosts = await userPost.find({
+    user: {
+      $in: { uniqueFriendId },
+    },
+    is: "Profile",
+  });
+  const combineResult = friendDetail.map((user) => {
+    const userImage = userPosts.find(
+      (post) => post.user.toString() === user._id.toString()
+    );
+    return { ...user.toObject(), image: userImage ? userImage.image : null };
+  });
+  res.send(combineResult);
+});
+
 export {
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
   blockUser,
+  searchFriends,
 };

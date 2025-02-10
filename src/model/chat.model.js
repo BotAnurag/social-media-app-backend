@@ -5,6 +5,10 @@ const chatSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  chatname: {
+    type: String,
+    trim: true,
+  },
   participants: [
     {
       type: mongoose.Schema.Types.ObjectId,

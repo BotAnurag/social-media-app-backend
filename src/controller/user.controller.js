@@ -1,10 +1,9 @@
 import asyncHandler from "express-async-handler";
 
 import userDetail from "../model/userDetails.model.js";
+import { userPost } from "../model/userPost.model.js";
 
 import otp from "../model/otp.model.js";
-
-import { userPost } from "../model/userPost.model.js";
 
 import { ApiError } from "../utils/ApiError.js";
 
@@ -34,8 +33,8 @@ const homePage = asyncHandler(async (req, res) => {
 const getMyProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const Detail = await userDetail.findById(userId);
-  const post = await userPost.find({ user: userId });
+  const Detail = await userDetail.findById(userId).select("username");
+  const post = await userPost.find({ user: userId, is: "Profile" });
 
   if (!Detail) {
     throw new ApiError(404, "user not register");
@@ -76,8 +75,6 @@ const otpSender = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  console.log(req.body);
-
   const { username, dob, gender, email, password, onetimepass } = req.body;
 
   const present = await userDetail.findOne({
@@ -104,7 +101,6 @@ const registerUser = asyncHandler(async (req, res) => {
   }
   const current = new Date();
   current.setMilliseconds(0);
-  console.log(current);
 
   if (user.expiresAt < current) {
     console.log("hi");
@@ -127,9 +123,13 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "error while regestering the user");
   }
   if (profile) {
-    await user.deleteOne({ email: email });
+    await otp.deleteOne({ email: email });
   }
-
+  const profilePic = await userPost.create({
+    user: profile._id,
+    image: "https://www.pinterest.com/pin/95420085850914854/",
+    is: "Profile",
+  });
   res
     .status(200)
     .json(new ApiResponse(200, profile, "user created sucess fully"));
