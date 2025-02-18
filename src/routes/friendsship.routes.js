@@ -3,6 +3,7 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   searchFriends,
+  getAllFriendRequest,
 } from "../controller/friendship.controller.js";
 
 import verifyJWt from "../middleware/auth.middlewaer.js";
@@ -13,6 +14,7 @@ const router = Router();
 
 // friendship route
 
+router.route("/allrequest").get(verifyJWt, getAllFriendRequest);
 router.route("/friendrequest").post(verifyJWt, sendFriendRequest);
 
 router.route("/acceptfriendrequest").patch(verifyJWt, acceptFriendRequest);

@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const chatSchema = mongoose.Schema({
+  friendshipId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "friendship",
+  },
   isGroupchat: {
     type: Boolean,
     default: false,

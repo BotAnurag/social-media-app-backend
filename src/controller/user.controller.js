@@ -25,10 +25,38 @@ const generateAccesstokenRefreshtoken = async (userId) => {
   }
 };
 
-const homePage = asyncHandler(async (req, res) => {
-  const user = await userDetail.find({});
-  res.status(200).json(new ApiResponse(200, user, `numHits:${user.length}`));
+const alluser = asyncHandler(async (_, res) => {
+  const user = await userDetail.find().select("-refreshToken -password");
+  res.send(user);
 });
+
+const searchFriends = asyncHandler(async (req, res) => {
+  const user = await userDetail.find().select("username _id");
+  const id = user.map((u) => u._id.toString());
+
+  const uniqueFriends = [...new Set(id.map((friend) => friend.toString()))];
+
+  const postuser = await Promise.all(
+    uniqueFriends.map(async (friends) => {
+      const user = await userDetail.findById(friends).select("_id username ");
+      const profile = await userPost
+        .find({
+          user: friends,
+          present: true,
+          is: "Profile",
+        })
+        .select("_id image likes comments createdAt");
+      const post = await userPost
+        .find({ user: friends, is: "Post" })
+        .select("_id image likes comments createdAt");
+
+      return { user, profile, post };
+    })
+  );
+  res.send(postuser);
+});
+
+const homePage = asyncHandler(async (req, res) => {});
 
 const getMyProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -125,14 +153,13 @@ const registerUser = asyncHandler(async (req, res) => {
   if (profile) {
     await otp.deleteOne({ email: email });
   }
-  const profilePic = await userPost.create({
+  await userPost.create({
     user: profile._id,
     image: "https://www.pinterest.com/pin/95420085850914854/",
     is: "Profile",
+    present: true,
   });
-  res
-    .status(200)
-    .json(new ApiResponse(200, profile, "user created sucess fully"));
+  res.status(200).json(new ApiResponse(200, "user created sucess fully"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -158,7 +185,7 @@ const loginUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .json(new ApiResponse(200, "user login success"));
+    .json(new ApiResponse(200, user, "user login success"));
 });
 
 const logout = asyncHandler(async (req, res) => {
@@ -185,4 +212,13 @@ const logout = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "logout success"));
 });
 
-export { homePage, registerUser, otpSender, loginUser, logout, getMyProfile };
+export {
+  homePage,
+  registerUser,
+  otpSender,
+  loginUser,
+  logout,
+  getMyProfile,
+  alluser,
+  searchFriends,
+};

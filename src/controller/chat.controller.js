@@ -7,40 +7,51 @@ import { ApiError } from "../utils/ApiError.js";
 
 const sideBarforFriends = asyncHandler(async (req, res) => {
   const me = req.user._id;
+  console.log(me);
+
+  // Find friendships where the user is either requester or recipient
   const friends = await friendship.find({
     $or: [{ requester: me }, { recipient: me }],
-    status: "ACCEPTED",
   });
+
+  console.log(friends);
 
   if (friends.length < 1) {
     throw new ApiError(404, "make friends first");
   }
-  const friendList = friends.map((friend) => {
-    return friend.requester._id.toString() === me.toString()
-      ? friend.recipient
-      : friend.requester;
-  });
 
-  const uniqueFriendId = [...new Set(friendList)];
+  // Extract unique friend IDs and store friendshipId
+  const friendList = friends.map((friend) => ({
+    friendId:
+      friend.requester._id.toString() === me.toString()
+        ? friend.recipient._id
+        : friend.requester._id,
+    friendshipId: friend._id,
+  }));
 
-  console.log(uniqueFriendId);
+  const uniqueFriends = [
+    ...new Map(friendList.map((f) => [f.friendId.toString(), f])).values(),
+  ];
 
-  const friendDetail = await userDetail
-    .find({ _id: { $in: uniqueFriendId } })
-    .select("username");
-  const userPosts = await userPost.find({
-    user: {
-      $in: { uniqueFriendId },
-    },
-    is: "Profile",
-  });
-  const combineResult = friendDetail.map((user) => {
-    const userImage = userPosts.find(
-      (post) => post.user.toString() === user._id.toString()
-    );
-    return { ...user.toObject(), image: userImage ? userImage.image : null };
-  });
-  res.send(combineResult);
+  console.log(uniqueFriends);
+
+  // Fetch user details and profile pictures
+  const side = await Promise.all(
+    uniqueFriends.map(async ({ friendId, friendshipId }) => {
+      const name = await userDetail.findById(friendId).select("_id username");
+      const profile = await userPost.findOne({
+        user: friendId,
+        present: true,
+        is: "Profile",
+      });
+
+      return { friendshipId, name, profile };
+    })
+  );
+
+  res.send(side);
 });
 
-export { sideBarforFriends };
+const getChat = asyncHandler(async (req, res) => {});
+
+export { sideBarforFriends, getChat };

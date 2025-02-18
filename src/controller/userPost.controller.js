@@ -25,11 +25,15 @@ const uploadProfilePicture = asyncHandler(async (req, res) => {
   if (!image) {
     throw new ApiError(400, "fail to upload image");
   }
-
+  await userPost.updateMany(
+    { user: userId, present: true },
+    { $set: { present: false } }
+  );
   const post = await userPost.create({
     user: userId._id,
     is: "Profile",
     image: image.url,
+    present: true,
     discripion,
   });
   res.status(200).json(new ApiResponse(200, post, "success"));

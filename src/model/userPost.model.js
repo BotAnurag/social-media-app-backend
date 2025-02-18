@@ -18,6 +18,10 @@ const PostSchema = new mongoose.Schema(
       type: mongoose.Schema.ObjectId,
       ref: "userDetail",
     },
+    present: {
+      type: Boolean,
+      default: false,
+    },
     is: {
       type: String,
       enum: ["Profile", "Post"],

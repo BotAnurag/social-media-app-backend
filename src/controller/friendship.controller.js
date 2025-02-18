@@ -8,7 +8,20 @@ import Chat from "../model/chat.model.js";
 import { userPost } from "../model/userPost.model.js";
 
 import asyncHandler from "express-async-handler";
+
 import userDetail from "../model/userDetails.model.js";
+
+const getAllFriendRequest = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const request = await friendship.find({
+    recipient: userId,
+    status: "PENDING",
+  });
+  if (!request) {
+    throw new ApiError(404, "no request found");
+  }
+  res.status(200).json(new ApiResponse(200, request, "request found"));
+});
 
 const sendFriendRequest = asyncHandler(async (req, res) => {
   const from = req.user._id;
@@ -40,16 +53,25 @@ const sendFriendRequest = asyncHandler(async (req, res) => {
   if (!newRequest) {
     throw new ApiError(400, "error while sending request");
   }
-  res.status(200).json(new ApiResponse(200, {}, "request send success fully"));
+  res
+    .status(200)
+    .json(new ApiResponse(200, { newRequest }, "request send success fully"));
 });
 
 const acceptFriendRequest = asyncHandler(async (req, res) => {
   // sending the object id of request not the user
   const { request } = req.body;
+  const userId = req.user._id;
+
   const existRequest = await friendship.findById(request);
+
   if (!existRequest) {
     throw new ApiError(400, "Request already  removed");
   }
+  if (userId.toString() === existRequest.requester.toString()) {
+    throw new ApiError(400, "You cannot accept your own friend request");
+  }
+
   existRequest.status = "ACCEPTED";
   await existRequest.save();
 
@@ -63,13 +85,14 @@ const acceptFriendRequest = asyncHandler(async (req, res) => {
   if (!chat) {
     // Create a new chat if it doesn't exist
     chat = new Chat({
+      friendshipId: request,
       participants: [user1, user2],
     });
   }
 
-  await chat.save(); // Save the chat document
+  await chat.save();
 
-  res.status(200).json(new ApiResponse(200, {}, "request accepted"));
+  res.status(200).json(new ApiResponse(200, { chat }, "request accepted"));
 });
 
 const declineFriendRequest = asyncHandler(async (req, res) => {
@@ -126,6 +149,7 @@ const blockUser = asyncHandler(async (req, res) => {
 
 const searchFriends = asyncHandler(async (req, res) => {
   const me = req.user._id;
+
   const friends = await friendship.find({
     $or: [{ requester: me }, { recipient: me }],
     status: "ACCEPTED",
@@ -140,26 +164,24 @@ const searchFriends = asyncHandler(async (req, res) => {
       : friend.requester;
   });
 
-  const uniqueFriendId = [...new Set(friendList)];
+  const uniqueFriends = [
+    ...new Set(friendList.map((friend) => friend.toString())),
+  ];
 
-  console.log(uniqueFriendId);
-
-  const friendDetail = await userDetail
-    .find({ _id: { $in: uniqueFriendId } })
-    .select("username");
-  const userPosts = await userPost.find({
-    user: {
-      $in: { uniqueFriendId },
-    },
-    is: "Profile",
-  });
-  const combineResult = friendDetail.map((user) => {
-    const userImage = userPosts.find(
-      (post) => post.user.toString() === user._id.toString()
-    );
-    return { ...user.toObject(), image: userImage ? userImage.image : null };
-  });
-  res.send(combineResult);
+  const user = await Promise.all(
+    uniqueFriends.map(async (friends) => {
+      const name = await userDetail.findById(friends).select("username");
+      const profile = await userPost
+        .find({
+          user: friends,
+          present: true,
+          is: "Profile",
+        })
+        .select("image");
+      return { name, profile };
+    })
+  );
+  res.send(user);
 });
 
 export {
@@ -168,4 +190,5 @@ export {
   declineFriendRequest,
   blockUser,
   searchFriends,
+  getAllFriendRequest,
 };
