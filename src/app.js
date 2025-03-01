@@ -20,5 +20,5 @@ app.use(
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/post", postRoutes);
 app.use("/api/v1/frieds", friedshipRoutes);
-app.use("/api/v1/message", chat);
+app.use("/api/v1/chat", chat);
 export default app;

@@ -30,32 +30,6 @@ const alluser = asyncHandler(async (_, res) => {
   res.send(user);
 });
 
-const searchFriends = asyncHandler(async (req, res) => {
-  const user = await userDetail.find().select("username _id");
-  const id = user.map((u) => u._id.toString());
-
-  const uniqueFriends = [...new Set(id.map((friend) => friend.toString()))];
-
-  const postuser = await Promise.all(
-    uniqueFriends.map(async (friends) => {
-      const user = await userDetail.findById(friends).select("_id username ");
-      const profile = await userPost
-        .find({
-          user: friends,
-          present: true,
-          is: "Profile",
-        })
-        .select("_id image likes comments createdAt");
-      const post = await userPost
-        .find({ user: friends, is: "Post" })
-        .select("_id image likes comments createdAt");
-
-      return { user, profile, post };
-    })
-  );
-  res.send(postuser);
-});
-
 const homePage = asyncHandler(async (req, res) => {});
 
 const getMyProfile = asyncHandler(async (req, res) => {
@@ -212,6 +186,21 @@ const logout = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "logout success"));
 });
 
+const searchUser = asyncHandler(async (req, res) => {
+  const { user } = req.body;
+  const users = await userDetail.find({
+    username: { $regex: user, $options: "i" },
+    status: "ACTIVE",
+  });
+  if (users.length < 1) {
+    throw new ApiError(404, "user not found with given name");
+  }
+  res
+    .status(200)
+    .json(new ApiResponse(200, users, `number of hits:  ${users.length}`));
+  // console.log(users);
+});
+
 export {
   homePage,
   registerUser,
@@ -220,5 +209,5 @@ export {
   logout,
   getMyProfile,
   alluser,
-  searchFriends,
+  searchUser,
 };

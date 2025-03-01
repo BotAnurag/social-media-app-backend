@@ -149,39 +149,58 @@ const blockUser = asyncHandler(async (req, res) => {
 
 const searchFriends = asyncHandler(async (req, res) => {
   const me = req.user._id;
+  const searchQuery = req.query.name || ""; // Get search query from request
+  console.log(searchQuery);
 
+  // Fetch accepted friendships
   const friends = await friendship.find({
     $or: [{ requester: me }, { recipient: me }],
     status: "ACCEPTED",
   });
 
   if (friends.length < 1) {
-    throw new ApiError(404, "make friends first");
+    throw new ApiError(404, "Make friends first");
   }
-  const friendList = friends.map((friend) => {
-    return friend.requester._id.toString() === me.toString()
-      ? friend.recipient
-      : friend.requester;
-  });
 
-  const uniqueFriends = [
+  // Extract friend IDs
+  const friendList = friends.map((friend) =>
+    friend.requester._id.toString() === me.toString()
+      ? friend.recipient
+      : friend.requester
+  );
+
+  const uniqueFriendIds = [
     ...new Set(friendList.map((friend) => friend.toString())),
   ];
 
-  const user = await Promise.all(
-    uniqueFriends.map(async (friends) => {
-      const name = await userDetail.findById(friends).select("username");
+  // Fetch user details for friends matching the search query
+  const users = await Promise.all(
+    uniqueFriendIds.map(async (friendId) => {
+      const name = await userDetail
+        .findOne({
+          _id: friendId,
+          username: { $regex: searchQuery, $options: "i" }, // Case-insensitive search
+        })
+        .select("username");
+
+      if (!name) return null; // Skip if no match
+
       const profile = await userPost
-        .find({
-          user: friends,
+        .findOne({
+          user: friendId,
           present: true,
           is: "Profile",
         })
         .select("image");
+
       return { name, profile };
     })
   );
-  res.send(user);
+
+  // Filter out null values (users who didn't match the search query)
+  const filteredUsers = users.filter((user) => user !== null);
+
+  res.send(filteredUsers);
 });
 
 export {

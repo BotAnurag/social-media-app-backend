@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
+    status: {
+      type: String,
+      default: "ACTIVE",
+      enum: ["ACTIVE", "DEACTIVE"],
+    },
   },
   { timestamps: true }
 );
