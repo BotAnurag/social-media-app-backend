@@ -85,7 +85,6 @@ const acceptFriendRequest = asyncHandler(async (req, res) => {
   if (!chat) {
     // Create a new chat if it doesn't exist
     chat = new Chat({
-      friendshipId: request,
       participants: [user1, user2],
     });
   }
@@ -145,6 +144,51 @@ const blockUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "user blocked successfully"));
+});
+
+const sideBarforFriends = asyncHandler(async (req, res) => {
+  const me = req.user._id;
+
+  // Find friendships where the user is either requester or recipient
+  const friends = await friendship.find({
+    $or: [{ requester: me }, { recipient: me }],
+  });
+
+  if (friends.length < 1) {
+    throw new ApiError(404, "[]");
+  }
+
+  // Extract unique friend IDs and store friendshipId
+  const friendList = friends.map((friend) => ({
+    friendId:
+      friend.requester._id.toString() === me.toString()
+        ? friend.recipient._id
+        : friend.requester._id,
+  }));
+
+  const uniqueFriends = [
+    ...new Map(friendList.map((f) => [f.friendId.toString(), f])).values(),
+  ];
+  console.log(uniqueFriends);
+
+  // Fetch user details and profile pictures
+  const side = await Promise.all(
+    uniqueFriends.map(async ({ friendId }) => {
+      const name = await userDetail.findById(friendId).select("_id username");
+      const profile = await userPost
+        .findOne({
+          user: friendId,
+          present: true,
+          is: "Profile",
+        })
+        .select("image");
+      return { name, profile };
+    })
+  );
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, { side }, `total num ${side.length}`));
 });
 
 const searchFriends = asyncHandler(async (req, res) => {
@@ -210,4 +254,5 @@ export {
   blockUser,
   searchFriends,
   getAllFriendRequest,
+  sideBarforFriends,
 };

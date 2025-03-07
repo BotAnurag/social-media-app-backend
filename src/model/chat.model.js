@@ -9,6 +9,9 @@ const chatSchema = mongoose.Schema({
     type: String,
     trim: true,
   },
+  chatImage: {
+    type: String,
+  },
   participants: [
     {
       type: mongoose.Schema.Types.ObjectId,

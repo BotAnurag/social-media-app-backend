@@ -1,96 +1,112 @@
 import asyncHandler from "express-async-handler";
-import { friendship } from "../model/friends.model.js";
 
 import userDetail from "../model/userDetails.model.js";
 import { userPost } from "../model/userPost.model.js";
 import { ApiError } from "../utils/ApiError.js";
+import mongoose from "mongoose";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 import Chat from "../model/chat.model.js";
 
-const sideBarforFriends = asyncHandler(async (req, res) => {
-  const me = req.user._id;
+const getChat = asyncHandler(async (req, res) => {
+  try {
+    const me = req.user._id;
+    const chat = await Chat.find({});
+  } catch (error) {}
+});
 
-  // Find friendships where the user is either requester or recipient
-  const friends = await friendship.find({
-    $or: [{ requester: me }, { recipient: me }],
-  });
+const createGroupChat = asyncHandler(async (req, res) => {
+  try {
+    const { users } = req.body;
+    // Validate ObjectIds
+    users.push(req.user._id);
+    const validUsers = users.filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
 
-  if (friends.length < 1) {
-    throw new ApiError(404, "make friends first");
+    if (validUsers.length < 2) {
+      throw new ApiError(400, "must be  2 or more users");
+    }
+    const name = validUsers.join(",");
+
+    const chat = await Chat.create({
+      chatImage:
+        "https://pixabay.com/photos/ring-tailed-lemur-lemur-group-cub-6954076/",
+      chatname: name,
+      isGroupchat: true,
+      participants: validUsers, // Assign only valid ObjectIds
+    });
+
+    await chat.save();
+
+    res.status(200).json(new ApiResponse(200, chat._id, "chat created"));
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "error while creating a group", error: error.message });
   }
+});
 
-  // Extract unique friend IDs and store friendshipId
-  const friendList = friends.map((friend) => ({
-    friendId:
-      friend.requester._id.toString() === me.toString()
-        ? friend.recipient._id
-        : friend.requester._id,
-  }));
+const myChatSidebar = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user._id; // Your user ID
 
-  const uniqueFriends = [
-    ...new Map(friendList.map((f) => [f.friendId.toString(), f])).values(),
-  ];
-  console.log(uniqueFriends);
+    console.log("hello");
 
-  // Fetch user details and profile pictures
-  const side = await Promise.all(
-    uniqueFriends.map(async ({ friendId }) => {
-      const name = await userDetail.findById(friendId).select("_id username");
-      const profile = await userPost
-        .findOne({
-          user: friendId,
+    // Retrieve chats where the user is a participant
+    const chats = await Chat.find({ participants: user }).populate(
+      "participants",
+      "_id username"
+    );
+
+    // Process each chat to extract the other user's details
+    const chatsWithOtherUser = await Promise.all(
+      chats.map(async (chat) => {
+        // Find the other participant (excluding the logged-in user)
+        const otherParticipant = chat.participants.find(
+          (participant) => participant._id.toString() !== user.toString()
+        );
+
+        if (chat.isGroupchat === true) {
+          return {
+            chatname: chat.chatname,
+            chatImage: chat.chatImage,
+            lastMessage: chat.lastMessage,
+          };
+        }
+
+        // Retrieve the profile image from userPost
+        const profilePost = await userPost.findOne({
+          user: otherParticipant._id,
           present: true,
           is: "Profile",
-        })
-        .select("image");
-      const chat = await Chat.find();
-      return { name, profile };
-    })
-  );
+        });
 
-  res.send(side);
+        return {
+          chatId: chat._id,
+          userId: otherParticipant._id, // Other participant's ID
+          chatname: otherParticipant.username, // Other participant's username
+          image: profilePost ? profilePost.image : null, // Other participant's profile image
+          lastMessage: chat.lastMessage, // Optional: Include last message if needed
+        };
+      })
+    );
+
+    res.send(chatsWithOtherUser);
+  } catch (error) {
+    console.log(`my chat error`, error);
+    throw new ApiError(500, `error while retriving your chats  ${error} `);
+  }
 });
 
-const getChat = asyncHandler(async (req, res) => {
-  const me = req.user._id;
-  const chat = await Chat.find({});
+const getAllChats = asyncHandler(async (req, res) => {
+  try {
+    const chat = await Chat.find();
+    res.status(200).json(new ApiResponse(200, { chat }, `${chat.length}`));
+  } catch (error) {
+    throw new ApiError(500, `${error}`);
+  }
 });
 
-const myChat = asyncHandler(async (req, res) => {
-  const user = req.user._id; // Your user ID
-
-  // Retrieve chats where the user is a participant
-  const chats = await Chat.find({ participants: user }).populate(
-    "participants",
-    "_id username"
-  );
-
-  // Process each chat to extract the other user's details
-  const chatsWithOtherUser = await Promise.all(
-    chats.map(async (chat) => {
-      // Find the other participant (excluding the logged-in user)
-      const otherParticipant = chat.participants.find(
-        (participant) => participant._id.toString() !== user.toString()
-      );
-
-      // Retrieve the profile image from userPost
-      const profilePost = await userPost.findOne({
-        user: otherParticipant._id,
-        present: true,
-        is: "Profile",
-      });
-
-      return {
-        chatId: chat._id,
-        userId: otherParticipant._id, // Other participant's ID
-        chatname: otherParticipant.username, // Other participant's username
-        image: profilePost ? profilePost.image : null, // Other participant's profile image
-        lastMessage: chat.lastMessage, // Optional: Include last message if needed
-      };
-    })
-  );
-
-  res.send(chatsWithOtherUser);
-});
-
-export { sideBarforFriends, getChat, myChat };
+export { getChat, myChatSidebar, createGroupChat, getAllChats };
