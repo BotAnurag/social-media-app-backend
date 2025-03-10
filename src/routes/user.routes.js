@@ -9,6 +9,7 @@ import {
   searchUser,
 } from "../controller/user.controller.js";
 
+import loginLimiter from "../middleware/ratelimiter.middleware.js";
 import verifyJWt from "../middleware/auth.middlewaer.js";
 
 import { Router } from "express";
@@ -19,7 +20,7 @@ router.route("/all").get(alluser);
 router.route("/").get(homePage);
 router.route("/otp").post(otpSender);
 router.route("/register").post(registerUser);
-router.route("/login").post(loginUser);
+router.route("/login").post(loginLimiter, loginUser);
 router.route("/me").get(verifyJWt, getMyProfile);
 router.route("/logout").post(verifyJWt, logout);
 router.route("/searchuser").get(searchUser);
