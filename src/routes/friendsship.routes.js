@@ -5,6 +5,7 @@ import {
   searchFriends,
   getAllFriendRequest,
   sideBarforFriends,
+  mySendRequest,
 } from "../controller/friendship.controller.js";
 
 import verifyJWt from "../middleware/auth.middlewaer.js";
@@ -25,5 +26,7 @@ router.route("/declinefriendrequest").patch(verifyJWt, declineFriendRequest);
 router.route("/getallFriends").get(verifyJWt, sideBarforFriends);
 
 router.route("/search").get(verifyJWt, searchFriends);
+
+router.route("/getSendRequest").get(verifyJWt, mySendRequest);
 
 export default router;

@@ -191,6 +191,42 @@ const sideBarforFriends = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { side }, `total num ${side.length}`));
 });
 
+const mySendRequest = asyncHandler(async (req, res) => {
+  try {
+    const me = req.user._id;
+    const myRequest = await friendship.find({
+      requester: me,
+      status: "PENDING",
+    });
+
+    console.log("my request", myRequest);
+
+    const userWithProfile = Promise.all(
+      myRequest.map(async (u) => {
+        return u.recipient;
+      })
+    );
+    return res.send(userWithProfile);
+    if (userWithProfile < 1) {
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "no request has been send"));
+    }
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          userWithProfile,
+          `num of request: ${userWithProfile.length}`
+        )
+      );
+  } catch (error) {
+    throw new ApiError(404, `error : ${error}`);
+  }
+});
+
 const searchFriends = asyncHandler(async (req, res) => {
   const me = req.user._id;
   const searchQuery = req.query.name || ""; // Get search query from request
@@ -255,4 +291,5 @@ export {
   searchFriends,
   getAllFriendRequest,
   sideBarforFriends,
+  mySendRequest,
 };
